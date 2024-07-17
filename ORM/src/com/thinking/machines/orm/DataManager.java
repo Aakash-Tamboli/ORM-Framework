@@ -4,6 +4,7 @@ import com.thinking.machines.orm.util.table.*;
 import com.thinking.machines.orm.util.column.*;
 import com.thinking.machines.orm.util.validator.*;
 import com.thinking.machines.orm.util.sql.*;
+import com.thinking.machines.orm.util.fieldwrapper.*;
 import com.thinking.machines.orm.exception.*;
 import com.thinking.machines.orm.annotation.*;
 import java.sql.*;
@@ -75,14 +76,23 @@ return false;
 
 public int save(Object object) throws DataException
 {
+int result=-1;
 Class c=object.getClass();
 String tableName=null;
 com.thinking.machines.orm.annotation.Table tableAnnotation=null;
 com.thinking.machines.orm.annotation.Column columnAnnotation=null;
+ForeignKey foreignKeyAnnotation=null;
+String foreignTableName=null;
+String foreignTableColumnName=null;
+Class dataType=null;
 Field []fields=null;
-String columnNameOnField=null;
+String columnName=null;
 Set<String> setOfColumns=null;
 boolean isPrimaryKey=false;
+boolean isPKSetByUser=false;
+boolean isAutoIncremented=false;
+boolean isTableContainsAutoIncrementedProperty=false;
+
 
 ColumnDataWithAdditionalInformation columnDataWithAdditionalInformation=null;
 List<ColumnDataWithAdditionalInformation> listOfColumnsDataWithAdditionalInformation=null;
@@ -107,52 +117,92 @@ listOfColumnsDataWithAdditionalInformation=new ArrayList<>();
 
 for(Field field: fields)
 {
-// reseting varaibles for next cycle.
+// reseting varaibles for next cycle for good readability
+columnAnnotation=null;
+columnName=null;
+value=null;
 isPrimaryKey=false;
+isPKSetByUser=false;
+isAutoIncremented=false;
+foreignKeyAnnotation=null;
+foreignTableName=null;
+foreignTableColumnName=null;
+dataType=null;
+
+// analysis phase starts 
+
 if(!field.isAnnotationPresent(com.thinking.machines.orm.annotation.Column.class)) throw new DataException("@Column annotation is not applied on "+field.getName()+" props of class "+c.getSimpleName());
 columnAnnotation=(com.thinking.machines.orm.annotation.Column)field.getAnnotation(com.thinking.machines.orm.annotation.Column.class);
-columnNameOnField=columnAnnotation.name();
-if(!setOfColumns.contains(columnNameOnField)) throw new DataException(columnNameOnField+" not exists in "+tableName+" table as column");
-// foreign key wala jahan jhart baad me dekh te hai
+columnName=columnAnnotation.name();
+if(!setOfColumns.contains(columnName)) throw new DataException(columnName+" not exists in "+tableName+" table as column");
+value=FieldWrapper.get(field,object);
+if(!Validator.isValidType(value)) throw new DataException(field.getName()+" data-type is invalid");
+dataType=Validator.whatTypeOf(value);
 if(field.isAnnotationPresent(com.thinking.machines.orm.annotation.PrimaryKey.class))
 {
 isPrimaryKey=true;
-}
-
-try
+if(field.isAnnotationPresent(AutoIncrement.class))
 {
-value=field.get(object);
-if(!Validator.isValidType(value)) throw new DataException(field.getName()+" data-type is invalid");
-columnDataWithAdditionalInformation=new ColumnDataWithAdditionalInformation();
-columnDataWithAdditionalInformation.setColumnName(columnNameOnField);
-columnDataWithAdditionalInformation.setColumnData(value);
-columnDataWithAdditionalInformation.setDataType(Validator.whatTypeOf(value));
-columnDataWithAdditionalInformation.setIsPrimaryKey(isPrimaryKey);
-}catch(IllegalAccessException illegalAccessException) // checked exception
+isAutoIncremented=true;
+isTableContainsAutoIncrementedProperty=true;
+isPKSetByUser=false;
+}
+else
 {
-throw new DataException(illegalAccessException.getMessage());
+isAutoIncremented=false;
+isPKSetByUser=true;
 }
-listOfColumnsDataWithAdditionalInformation.add(columnDataWithAdditionalInformation);
+}
+if(field.isAnnotationPresent(ForeignKey.class))
+{
+foreignKeyAnnotation=(ForeignKey)field.getAnnotation(ForeignKey.class);
+foreignTableName=foreignKeyAnnotation.parent();
+foreignTableColumnName=foreignKeyAnnotation.column();
 }
 
-FireSQL.insert(connection,tableName,listOfColumnsDataWithAdditionalInformation);
 
 
+// analysis phase ends
+
+
+// validation phase
+if(isPKSetByUser)
+{
 /*
-Phase-1 Validating object & class
-if(class doesn't have Table annotation) then throw exception
-if(Table annotation value is not valid) then throw exception
-Traverse on class props/fields
-start loop
-- get each field
-- if(field doesn't have Column annotation) then throw exception
-- if(Column annotation props is not valid ) then throw exception
-- if(field has foreign key annotation and that foreign key is not exists on that table) then throw exception
-end loop
-Phase-2 Adding object/record into table
+if primary key is set by user then
+	FireSQL.isExists(-/-) throw new DataException("Primary key already exists in record insertion failed");
+for self reff -> later on create static class for collection of exception message 
 */
+if(FireSQL.isExists(connection,value,dataType,tableName,columnName)) throw new DataException("Primary key already exists in record");
+}
 
-return -1;
+
+if(foreignKeyAnnotation!=null) // not null means annotation applied on prop. of class
+{
+/*
+if foriegnKey Annotation Applied -
+	FireSQL.isExists(-/-) if false then throw exception otherwise continue to rest of the process
+*/
+if(!FireSQL.isExists(connection,value,dataType,foreignTableName,foreignTableColumnName)) throw new DataException("Foreign key is not found in foreign table");
+}
+
+// validation phase ends
+
+
+
+columnDataWithAdditionalInformation=new ColumnDataWithAdditionalInformation();
+columnDataWithAdditionalInformation.setColumnName(columnName);
+columnDataWithAdditionalInformation.setColumnData(value);
+columnDataWithAdditionalInformation.setDataType(dataType);
+columnDataWithAdditionalInformation.setIsPrimaryKey(isPrimaryKey);
+columnDataWithAdditionalInformation.setIsAutoIncremented(isAutoIncremented);
+columnDataWithAdditionalInformation.setForeignTableName(foreignTableName);
+columnDataWithAdditionalInformation.setForeignTableColumnName(foreignTableColumnName);
+
+listOfColumnsDataWithAdditionalInformation.add(columnDataWithAdditionalInformation);
+} // loop braces ends
+result=FireSQL.insert(connection,tableName,listOfColumnsDataWithAdditionalInformation,isTableContainsAutoIncrementedProperty);
+return result;
 }
 
 public static DataManager getDataManager()

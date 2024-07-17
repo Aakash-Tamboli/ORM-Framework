@@ -9,7 +9,9 @@ javac -classpath ../dependencies/*:. -d ../classes com/thinking/machines/orm/uti
 javac -classpath ../dependencies/*:. -d ../classes com/thinking/machines/orm/util/json/*.java
 javac -classpath ../dependencies/*:. -d ../classes com/thinking/machines/orm/util/table/*.java
 javac -classpath ../dependencies/*:. -d ../classes com/thinking/machines/orm/util/validator/*.java
+javac -classpath ../dependencies/*:. -d ../classes com/thinking/machines/orm/util/sql/statement/*.java
 javac -classpath ../dependencies/*:. -d ../classes com/thinking/machines/orm/util/sql/*.java
+javac -classpath ../dependencies/*:. -d ../classes com/thinking/machines/orm/util/fieldwrapper/*.java
 javac -d ../classes com/thinking/machines/orm/annotation/*.java
 javac -d ../classes com/thinking/machines/orm/exception/*.java
 javac -classpath ../dependencies/*:. -d ../classes com/thinking/machines/orm/*.java

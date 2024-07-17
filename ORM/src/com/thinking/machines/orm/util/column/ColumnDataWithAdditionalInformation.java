@@ -7,6 +7,11 @@ private String columnName;
 private Object columnData;
 private Class dataType;
 private boolean isPrimaryKey;
+private boolean isAutoIncremented;
+private String foreignTableName;
+private String foreignTableColumnName;
+
+// I'll write constructor once this class finalized
 
 // setter
 public void setColumnName(String columnName)
@@ -29,6 +34,21 @@ public void setIsPrimaryKey(boolean isPrimaryKey)
 this.isPrimaryKey=isPrimaryKey;
 }
 
+public void setForeignTableName(String foreignTableName)
+{
+this.foreignTableName=foreignTableName;
+}
+
+public void setForeignTableColumnName(String foreignTableColumnName)
+{
+this.foreignTableColumnName=foreignTableColumnName;
+}
+
+public void setIsAutoIncremented(boolean isAutoIncremented)
+{
+this.isAutoIncremented=isAutoIncremented;
+}
+
 // getters
 
 public String getColumnName()
@@ -45,9 +65,24 @@ public Class getDataType()
 return this.dataType;
 }
 
-public boolean isPrimaryKey()
+public boolean getIsPrimaryKey()
 {
 return this.isPrimaryKey;
+}
+
+public String getForeignTableName()
+{
+return this.foreignTableName;
+}
+
+public String getForeignTableColumnName()
+{
+return this.foreignTableColumnName;
+}
+
+public boolean getIsAutoIncremented()
+{
+return this.isAutoIncremented;
 }
 
 }// class braces close

@@ -7,5 +7,5 @@ import java.lang.annotation.*;
 public @interface ForeignKey
 {
 String parent();
-String Column();
+String column();
 } 

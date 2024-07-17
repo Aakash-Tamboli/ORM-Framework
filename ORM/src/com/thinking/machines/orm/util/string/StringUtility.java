@@ -81,6 +81,72 @@ private static String uncapitalize(String str)
 {
 return str.substring(0,1).toLowerCase()+str.substring(1);
 }
+
+public static String stringFormOfValue(Object value,Class type)
+{
+Long l=null;
+Integer i=null;
+Short s=null;
+Byte b=null;
+Double d=null;
+Float f=null;
+Character ch=null;
+Boolean bool=null;
+String str=null;
+Class dataType=null;
+java.sql.Date date=null;
+short counter=1;
+
+if(type.equals(Long.class))
+{
+l=(Long)value;
+return l.toString();
 }
-
-
+else if(type.equals(Integer.class))
+{
+i=(Integer)value;
+return i.toString();
+}
+else if(type.equals(Short.class))
+{
+s=(Short)value;
+return s.toString();
+}
+else if(type.equals(Byte.class))
+{
+b=(Byte)value;
+return b.toString();
+}
+else if(type.equals(Double.class))
+{
+d=(Double)value;
+return d.toString();
+}
+else if(type.equals(Float.class))
+{
+f=(Float)value;
+return f.toString();
+}
+else if(type.equals(Character.class))
+{
+ch=(Character)value;
+return "\""+ch.toString()+"\"";
+}
+else if(type.equals(String.class))
+{
+str=(String)value;
+return "\""+str+"\"";
+}
+else if(type.equals(Boolean.class))
+{
+bool=(Boolean)value;
+return bool.toString();
+}
+else if(type.equals(java.sql.Date.class))
+{
+date=(java.sql.Date)value;
+return "\""+date.toString()+"\"";
+}
+return "";
+} // method braces close
+} // class braces close
