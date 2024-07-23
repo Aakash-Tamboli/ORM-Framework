@@ -1,4 +1,4 @@
 #~/bin/bash
 
-javac -classpath ../../dist/*:../../dependencies/*:. $1
+javac -classpath ../../dist/*:../../dependencies/*:./pojos/dist/*:. $1
 

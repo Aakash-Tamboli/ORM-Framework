@@ -2,40 +2,76 @@ package com.thinking.machines.orm.util.foreignkey;
 
 public class ForeignKeyInformation implements Comparable<ForeignKeyInformation>
 {
-public String currentTableColumn;
-public String foreignTableName;
-public String foreignTableColumnName;
+private String columnName;
+private String foreignTableName;
+private  String foreignTableColumnName;
 
 public ForeignKeyInformation()
 {
-this.currentTableColumn=null;
+this.columnName=null;
 this.foreignTableName=null;
 this.foreignTableColumnName=null;
 }
 
-public ForeignKeyInformation(String currentTableColumn,String foreignTableName,String foreignTableColumnName)
+public ForeignKeyInformation(String columnName,String foreignTableName,String foreignTableColumnName)
 {
-this.currentTableColumn=currentTableColumn;
+this.columnName=columnName;
 this.foreignTableName=foreignTableName;
 this.foreignTableColumnName=foreignTableColumnName;
 }
 
+
+// setters
+public void setColumnName(String columnName)
+{
+this.columnName=columnName;
+}
+
+public void setForeignTableName(String foreignTableName)
+{
+this.foreignTableName=foreignTableName;
+}
+
+public void setForeignTableColumnName(String foreignTableColumnName)
+{
+this.foreignTableColumnName=foreignTableColumnName;
+}
+
+
+// getters
+
+public String getCurrentTableColumn()
+{
+return this.columnName;
+}
+
+public String getForeignTableName()
+{
+return this.foreignTableName;
+}
+
+public String getForeignTableColumnName()
+{
+return this.foreignTableColumnName;
+}
+
+// **** Following method helps to Collection classes
 public boolean equals(Object other) // for set uses
 {
 if(!(other instanceof ForeignKeyInformation)) return false;
 ForeignKeyInformation foreignKeyInformation=(ForeignKeyInformation)other;
-return this.currentTableColumn.equals(foreignKeyInformation.currentTableColumn);
+return this.columnName.equals(foreignKeyInformation.columnName);
 }
 
 public int compareTo(ForeignKeyInformation foreignKeyInformation)
 {
-return this.currentTableColumn.compareTo(foreignKeyInformation.currentTableColumn);
+return this.columnName.compareTo(foreignKeyInformation.columnName);
 }
 
 public int hashCode()
 {
-return this.currentTableColumn.hashCode();
+return this.columnName.hashCode();
 }
-}
+} // class braces ends
 
 

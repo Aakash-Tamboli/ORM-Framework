@@ -2,11 +2,15 @@ package com.thinking.machines.orm;
 import com.thinking.machines.orm.util.json.*;
 import com.thinking.machines.orm.util.table.*;
 import com.thinking.machines.orm.util.column.*;
+import com.thinking.machines.orm.util.foreignkey.*;
 import com.thinking.machines.orm.util.validator.*;
 import com.thinking.machines.orm.util.sql.*;
 import com.thinking.machines.orm.util.fieldwrapper.*;
+import com.thinking.machines.orm.model.*;
+import com.thinking.machines.orm.pojo.*;
 import com.thinking.machines.orm.exception.*;
 import com.thinking.machines.orm.annotation.*;
+
 import java.sql.*;
 import java.io.*;
 import java.util.*;
@@ -15,134 +19,249 @@ import java.lang.reflect.*;
 
 public class DataManager
 {
+
+// ******** PRIVATE SECTION OF CLASS  STARTS ********************
+private static ConfigurationFile configurationFile=null;
 private static DataManager dataManager=null;
 private static Connection connection=null;
 private static DatabaseMetaData databaseMetaData=null;
-
-// brute force private List<String> listOfTables=null;
-
-private Set<String> setOfTables=null;
-private Map<String,Set<String>> mapOfTablesWithColumns=null;
+private Map<String,Map<String,ColumnInfo>> tablesInfo=null;
 
 private DataManager()
 {
-this.setOfTables=null;
+this.tablesInfo=null;
 }
 
-private static Connection getConnection(ConfigurationFile configurationFile) throws Exception
+private static Connection getConnection() throws Exception
 {
 Connection connection=null;
 try
 {
-Class.forName(configurationFile.getJdbcDriver());
-connection=DriverManager.getConnection(configurationFile.getConnectionUrl(),configurationFile.getUsername(),configurationFile.getPassword());
+String JDBCDriver=configurationFile.getJDBCDriver();
+if(JDBCDriver!=null) JDBCDriver=JDBCDriver.trim();
+else throw new Exception("JDBC Driver not specify in config.json");
+String connectionURL=configurationFile.getConnectionURL();
+if(connectionURL!=null) connectionURL=connectionURL.trim();
+else throw new Exception("connectionURL not specify in config.json");
+String username=configurationFile.getUsername();
+if(username!=null) username=username.trim();
+else throw new Exception("username not specify in config.json");
+String password=configurationFile.getPassword();
+if(password!=null) password=password.trim();
+else throw new Exception("password not specify in config.json");
+
+Class.forName(JDBCDriver);
+
+connection=DriverManager.getConnection(connectionURL,username,password);
+
 }catch(Exception exception)
 {
 throw exception;
 }
 return connection;
+} // method ends
+
+// ******** PRIVATE SECTION OF CLASS  ENDS  ********************
+
+// ******** PUBLIC SECTION OF CLASS STARTS ********************
+
+
+public static DataManager getDataManager()
+{
+if(dataManager!=null) return dataManager;
+try
+{
+configurationFile=JsonOperation.loadConfigFile();
+DataManager.connection=DataManager.getConnection();
+DataManager.databaseMetaData=DataManager.connection.getMetaData();
+DataManager.dataManager=new DataManager();
+dataManager.tablesInfo=com.thinking.machines.orm.util.table.Table.getTablesInfo(databaseMetaData);
+}catch(Exception exception)
+{
+System.out.println(exception);
 }
+return DataManager.dataManager;
+} // method braces close
 
 public void begin()
 {
 // not yet decided
 }
 
-public void generateDTOClasses(String directoryName) throws DataException
+public void generateClasses() throws DataException
 {
-if(directoryName!=null) directoryName=directoryName.trim();
+/*
+This method will generate All POJOS Classes into dist folder
+where each POJO classes are representation of acutal tables in DB
+*/
 try
 {
-com.thinking.machines.orm.util.table.Table.convertTablesIntoClasses(databaseMetaData,directoryName);
+com.thinking.machines.orm.util.table.Table.convertTablesIntoClasses(databaseMetaData,configurationFile.getPackaging());
 }catch(DataException dataException)
 {
 throw dataException;
 }
 }
 
-public void generateDTOClasses() throws DataException
-{
-generateDTOClasses(null);
-}
-
-private boolean isTableExists(String tableName)
-{
-for(String tbName: dataManager.setOfTables)
-{
-if(tableName.equals(tbName)) return true;
-}
-return false; 
-}
-
 public int save(Object object) throws DataException
 {
+/*
+Pseudo Code -
+- Known Fact :
+	I have DS which is Map(Tree) in it -
+		I have tableName and Column Details
+
+
+- if @Table annotation not found then throw exception
+
+- Extract @Table annotation values
+
+- if table name is not found in our DS then throw exception
+
+- Extract all fields of object's class
+
+- check one by one
+
+loop starts
+- if @Column Annotation not found then then throw exception
+
+- Extract @Column Annotation values
+
+- if columnName not found in DS then then throw exception
+
+- Extract ColumnInfo Object from DS that represent current column
+
+	- Extract value from object's attribute
+	
+	- if Object's attribute data-type is not correct then throw exception
+	
+	- if column 
+		- has constraint i.e not null, then
+			- if Extracted value is null then throw exception
+		- has constraint i.e primary key then
+			- if set by user then
+				- check extracted value is present or not present in DB
+					if it is then throw exception
+			- if AutoIncremented then OK
+		- has constraint i.e unique then
+				- if extracted value already present in DB then throw exception
+				  otherwise no problem
+		- has constraint i.e foreign key then,
+			- foriegnkey table & foreignKey column Must be be present in DB
+				if not present then throw exception
+				otherwise no problem.
+	
+loop ends
+
+
+
+*/
 int result=-1;
-Class c=object.getClass();
+
 String tableName=null;
+String columnName=null;
+
+ForeignKey foreignKeyAnnotation=null;
 com.thinking.machines.orm.annotation.Table tableAnnotation=null;
 com.thinking.machines.orm.annotation.Column columnAnnotation=null;
-ForeignKey foreignKeyAnnotation=null;
-String foreignTableName=null;
-String foreignTableColumnName=null;
-Class dataType=null;
+
 Field []fields=null;
-String columnName=null;
-Set<String> setOfColumns=null;
+
+List<ColumnData> listOfColumnsData=null;
+ColumnData columnData=null;
+
+Map<String,ColumnInfo> columnsInformation=null;
+ColumnInfo columnInfo=null;
+
 boolean isPrimaryKey=false;
+boolean isNOTNULL=false;
 boolean isPKSetByUser=false;
+boolean isUnique=false;
 boolean isAutoIncremented=false;
 boolean isTableContainsAutoIncrementedProperty=false;
 
+ForeignKeyInformation foreignKeyInformation=null;
 
-ColumnDataWithAdditionalInformation columnDataWithAdditionalInformation=null;
-List<ColumnDataWithAdditionalInformation> listOfColumnsDataWithAdditionalInformation=null;
+String foreignTableName=null;
+String foreignTableColumnName=null;
+
+Class c=null;
+Class dataType=null;
 Object value=null;
 
-if(c.isAnnotationPresent(com.thinking.machines.orm.annotation.Table.class)==false)
+
+c=object.getClass();
+
+if(!c.isAnnotationPresent(com.thinking.machines.orm.annotation.Table.class))
 {
 throw new DataException("@Table Annotation is applied on class");
 }
+
 tableAnnotation=(com.thinking.machines.orm.annotation.Table)c.getAnnotation(com.thinking.machines.orm.annotation.Table.class);
 tableName=tableAnnotation.name();
-if(!isTableExists(tableName))
+
+if(!tablesInfo.containsKey(tableName))
 {
 throw new DataException(tableName+" not exitst in database");
 }
 
-setOfColumns=mapOfTablesWithColumns.get(tableName);
+columnsInformation=tablesInfo.get(tableName);
+
 
 fields=c.getFields();
 
-listOfColumnsDataWithAdditionalInformation=new ArrayList<>();
+listOfColumnsData=new ArrayList<>();
 
 for(Field field: fields)
 {
 // reseting varaibles for next cycle for good readability
-columnAnnotation=null;
-columnName=null;
-value=null;
-isPrimaryKey=false;
-isPKSetByUser=false;
-isAutoIncremented=false;
-foreignKeyAnnotation=null;
-foreignTableName=null;
-foreignTableColumnName=null;
-dataType=null;
 
-// analysis phase starts 
 
 if(!field.isAnnotationPresent(com.thinking.machines.orm.annotation.Column.class)) throw new DataException("@Column annotation is not applied on "+field.getName()+" props of class "+c.getSimpleName());
+
 columnAnnotation=(com.thinking.machines.orm.annotation.Column)field.getAnnotation(com.thinking.machines.orm.annotation.Column.class);
+
 columnName=columnAnnotation.name();
-if(!setOfColumns.contains(columnName)) throw new DataException(columnName+" not exists in "+tableName+" table as column");
+
+if(!columnsInformation.containsKey(columnName)) throw new DataException(columnName+" not exists in "+tableName+" table as column");
+
+columnInfo=columnsInformation.get(columnName);
+
+// generate warning if everything is alright but annotation is not applied by user
+
 value=FieldWrapper.get(field,object);
+
 if(!Validator.isValidType(value)) throw new DataException(field.getName()+" data-type is invalid");
+
 dataType=Validator.whatTypeOf(value);
-if(field.isAnnotationPresent(com.thinking.machines.orm.annotation.PrimaryKey.class))
+
+System.out.println("[DEBUG] Value props: "+value);
+System.out.println("[DEBUG] Data props: "+dataType);
+
+
+// Analysis Phase Starts
+
+if(columnInfo.hasNOTNULL())
 {
+if(!field.isAnnotationPresent(NOTNULL.class)) System.out.println("[WARN] @NOT NULL Annotation not applied");
+isNOTNULL=true;
+}
+else
+{
+// else is not necc. but I gave it because of readability.
+isNOTNULL=false;
+}
+
+if(columnInfo.hasPrimaryKey())
+{
+
+if(!field.isAnnotationPresent(PrimaryKey.class)) System.out.println("[WARN] @PrimaryKey Annotation not applied");
+
 isPrimaryKey=true;
-if(field.isAnnotationPresent(AutoIncrement.class))
+
+if(columnInfo.hasAutoIncrement())
 {
+if(!field.isAnnotationPresent(AutoIncrement.class)) System.out.println("[WARN] @AutoIncrement Annotation not applied");
 isAutoIncremented=true;
 isTableContainsAutoIncrementedProperty=true;
 isPKSetByUser=false;
@@ -153,74 +272,117 @@ isAutoIncremented=false;
 isPKSetByUser=true;
 }
 }
-if(field.isAnnotationPresent(ForeignKey.class))
+else
+{
+// else is not necc. but I gave it because of readability.
+isPrimaryKey=false;
+isPKSetByUser=false;
+isAutoIncremented=false;
+}
+
+if(columnInfo.hasUnique())
+{
+if(!field.isAnnotationPresent(Unique.class)) System.out.println("[WARN] @Unique Annotation not applied");
+isUnique=true;
+}
+else
+{
+isUnique=false;
+}
+
+
+if(columnInfo.hasForeignKey()!=null)
+{
+if(!field.isAnnotationPresent(ForeignKey.class))
+{
+System.out.println("[WARN] @ForeignKey Annotation not applied");
+// user not provided foreign key information, I'll get from model ColumnInfo
+foreignKeyInformation=columnInfo.getForeignKeyInformation();
+foreignTableName=foreignKeyInformation.getForeignTableName();
+foreignTableColumnName=foreignKeyInformation.getForeignTableColumnName();
+}
+else
 {
 foreignKeyAnnotation=(ForeignKey)field.getAnnotation(ForeignKey.class);
 foreignTableName=foreignKeyAnnotation.parent();
 foreignTableColumnName=foreignKeyAnnotation.column();
 }
+}
+else
+{
+// else is not necc. but I gave it because of readability.
+foreignKeyInformation=null;
+foreignKeyAnnotation=null;
+}
+
+// Analysis phase ends
 
 
+// validation phase Starts
 
-// analysis phase ends
+if(isNOTNULL)
+{
+if(value==null) throw new DataException(columnName+" has NOT NULL constraint applied, So pass valid value");
+}
 
-
-// validation phase
 if(isPKSetByUser)
 {
 /*
-if primary key is set by user then
-	FireSQL.isExists(-/-) throw new DataException("Primary key already exists in record insertion failed");
 for self reff -> later on create static class for collection of exception message 
 */
 if(FireSQL.isExists(connection,value,dataType,tableName,columnName)) throw new DataException("Primary key already exists in record");
 }
 
+if(isUnique)
+{
+if(FireSQL.isExists(connection,value,dataType,tableName,columnName)) throw new DataException(columnName+" has Unique constraint hence your value already exists in record");
+}
 
-if(foreignKeyAnnotation!=null) // not null means annotation applied on prop. of class
+
+if(foreignKeyInformation!=null || foreignKeyAnnotation!=null)
 {
 /*
 if foriegnKey Annotation Applied -
 	FireSQL.isExists(-/-) if false then throw exception otherwise continue to rest of the process
 */
-if(!FireSQL.isExists(connection,value,dataType,foreignTableName,foreignTableColumnName)) throw new DataException("Foreign key is not found in foreign table");
+if(!FireSQL.isExists(connection,value,dataType,foreignTableName,foreignTableColumnName)) throw new DataException("Problem with Foreign key, May Foreign Table or Column or value not exitst");
 }
 
 // validation phase ends
 
 
+// Pojos to send data to FireSQL buddy to execute statements
+columnData=new ColumnData();
+columnData.setColumnName(columnName);
+columnData.setColumnData(value);
+columnData.setDataType(dataType);
+columnData.setIsPrimaryKey(isPrimaryKey);
+columnData.setIsAutoIncremented(isAutoIncremented);
+columnData.setForeignTableName(foreignTableName);
+columnData.setForeignTableColumnName(foreignTableColumnName);
 
-columnDataWithAdditionalInformation=new ColumnDataWithAdditionalInformation();
-columnDataWithAdditionalInformation.setColumnName(columnName);
-columnDataWithAdditionalInformation.setColumnData(value);
-columnDataWithAdditionalInformation.setDataType(dataType);
-columnDataWithAdditionalInformation.setIsPrimaryKey(isPrimaryKey);
-columnDataWithAdditionalInformation.setIsAutoIncremented(isAutoIncremented);
-columnDataWithAdditionalInformation.setForeignTableName(foreignTableName);
-columnDataWithAdditionalInformation.setForeignTableColumnName(foreignTableColumnName);
+// adding into list
+listOfColumnsData.add(columnData);
 
-listOfColumnsDataWithAdditionalInformation.add(columnDataWithAdditionalInformation);
+// reseting variabls for next cycle
+columnAnnotation=null;
+columnName=null;
+value=null;
+dataType=null;
+isPrimaryKey=false;
+isPKSetByUser=false;
+isAutoIncremented=false;
+isNOTNULL=false;
+isUnique=false;
+foreignKeyInformation=null;
+foreignKeyAnnotation=null;
+foreignTableName=null;
+foreignTableColumnName=null;
 } // loop braces ends
-result=FireSQL.insert(connection,tableName,listOfColumnsDataWithAdditionalInformation,isTableContainsAutoIncrementedProperty);
+result=FireSQL.insert(connection,tableName,listOfColumnsData,isTableContainsAutoIncrementedProperty);
 return result;
 }
 
-public static DataManager getDataManager()
-{
-if(dataManager!=null) return dataManager;
-try
-{
-ConfigurationFile configurationFile=JsonOperation.loadConfigFile();
-DataManager.connection=DataManager.getConnection(configurationFile);
-DataManager.databaseMetaData=DataManager.connection.getMetaData();
-DataManager.dataManager=new DataManager();
-dataManager.setOfTables=com.thinking.machines.orm.util.table.Table.getAllTables(databaseMetaData);
-dataManager.mapOfTablesWithColumns=com.thinking.machines.orm.util.column.Column.getMapOfTablesWithColumns(databaseMetaData,dataManager.setOfTables);
-}catch(Exception exception)
-{
-System.out.println(exception);
-}
-return DataManager.dataManager;
-} // method braces close
+// ******** PUBLIC SECTION OF CLASS ENDS ********************
 
 } // class braces close

@@ -1,0 +1,5 @@
+Design I follow
+- I treated each classes as PERSON
+- when classes using each other methods I called communication b/w persons
+- On Each Folder have readme.txt that tells How you see those classes as
+	perspective wise

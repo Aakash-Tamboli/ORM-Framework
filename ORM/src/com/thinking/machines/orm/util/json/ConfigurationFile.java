@@ -2,28 +2,30 @@ package com.thinking.machines.orm.util.json;
 
 public class ConfigurationFile
 {
-private String jdbcDriver;
-private String connectionUrl;
+private String JDBCDriver;
+private String connectionURL;
 private String username;
 private String password;
+private String packaging;
 
 public ConfigurationFile()
 {
-this.jdbcDriver="";
-this.connectionUrl="";
-this.username="";
-this.password="";
+this.JDBCDriver=null;
+this.connectionURL=null;
+this.username=null;
+this.password=null;
+this.packaging=null;
 }
 
 // setter starts
-public void setJdbcDriver(String jdbcDriver)
+public void setJDBCDriver(String JDBCDriver)
 {
-this.jdbcDriver=jdbcDriver;
+this.JDBCDriver=JDBCDriver;
 }
 
-public void setConnectionUrl(String connectionUrl)
+public void setConnectionURL(String connectionURL)
 {
-this.connectionUrl=connectionUrl;
+this.connectionURL=connectionURL;
 }
 
 public void setUsername(String username)
@@ -36,15 +38,20 @@ public void setPassword(String password)
 this.password=password;
 }
 
+public void setPackaging(String packaging)
+{
+this.packaging=packaging;
+}
+
 // setter ends
 // getter starts
-public String getJdbcDriver()
+public String getJDBCDriver()
 {
-return this.jdbcDriver;
+return this.JDBCDriver;
 }
-public String getConnectionUrl()
+public String getConnectionURL()
 {
-return this.connectionUrl=connectionUrl;
+return this.connectionURL;
 }
 public String getUsername()
 {
@@ -53,6 +60,10 @@ return this.username=username;
 public String getPassword()
 {
 return this.password;
+}
+public String getPackaging()
+{
+return this.packaging;
 }
 // getter ends
 } // class ends

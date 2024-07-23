@@ -1,6 +1,8 @@
 package com.thinking.machines.orm.util.sql.statement;
 import com.thinking.machines.orm.util.column.*;
 import com.thinking.machines.orm.util.string.*;
+import com.thinking.machines.orm.pojo.*;
+
 
 import java.util.*;
 
@@ -8,12 +10,16 @@ import java.util.*;
 
 public class PrepareSQLStatement
 {
-
-private static void putColumnNamesIntoAddSQLStatement(StringBuilder stringBuilder,List<ColumnDataWithAdditionalInformation> columnsDataWithAdditionalInformation)
+private static StringBuilder stringBuilder=null; // I want that this props always acessible by all methods within class
+private static String getColumns(List<ColumnData> columnsData)
 {
+/*
+It will generate string contains columnsName in sql format
+(name,gender,so on)
+*/
 stringBuilder.append(" (");
 boolean firstColumn=true;
-for(ColumnDataWithAdditionalInformation columnData: columnsDataWithAdditionalInformation)
+for(ColumnData columnData: columnsData)
 {
 if(columnData.getIsAutoIncremented()) continue;
 if(firstColumn)
@@ -27,15 +33,20 @@ stringBuilder.append(","+columnData.getColumnName());
 }
 }
 stringBuilder.append(")");
+return stringBuilder.toString();
 }
 
-private static void putValuesIntoAddSQLStatement(StringBuilder stringBuilder,List<ColumnDataWithAdditionalInformation> columnsDataWithAdditionalInformation)
+private static void getValues(List<ColumnData> columnsData)
 {
+/*
+It will generate string contains values in sql format
+values("Aakash","M",so on)
+*/
 Object value=null;
 Class dataType=null;
 boolean firstValue=true;
 stringBuilder.append(" values(");
-for(ColumnDataWithAdditionalInformation columnData: columnsDataWithAdditionalInformation)
+for(ColumnData columnData: columnsData)
 {
 System.out.println(1.1);
 if(columnData.getIsAutoIncremented()) continue;
@@ -53,26 +64,30 @@ System.out.println(1.3);
 stringBuilder.append(")");
 } // method braces ends
 
-public static String forAdd(String tableName,List<ColumnDataWithAdditionalInformation> columnsDataWithAdditionalInformation)
+public static String forInsert(String tableName,List<ColumnData> columnsData)
 {
 // insert into course (title) values("JAVA")
 // insert into tableName (columnName) values(list_of_values)
-StringBuilder stringBuilder=new StringBuilder();
+String sql=null;
+stringBuilder=new StringBuilder();
 stringBuilder.append("insert into ");
 stringBuilder.append(tableName);
-System.out.println(1);
-putColumnNamesIntoAddSQLStatement(stringBuilder,columnsDataWithAdditionalInformation);
-System.out.println(2);
-putValuesIntoAddSQLStatement(stringBuilder,columnsDataWithAdditionalInformation);
-System.out.println(3);
-return stringBuilder.toString();
+getColumns(columnsData);
+getValues(columnsData);
+sql=stringBuilder.toString();
+stringBuilder=null;
+System.out.println("SQL in Prepared SQL Module: ["+sql+"]");
+return sql;
 }
 
-public static String forForiegnKeyExists(String tableName,String columnName,Object value,Class dataType)
+// toCheck Foreign Key
+// toCheck Primary Key & so on
+public static String toCheck(String tableName,String columnName,Object value,Class dataType)
 {
 // select code from course where code=1
 // select columnName from tableName where code=value
-StringBuilder stringBuilder=new StringBuilder();
+String sql=null;
+stringBuilder=new StringBuilder();
 stringBuilder.append("select ");
 stringBuilder.append(columnName);
 stringBuilder.append(" from ");
@@ -81,7 +96,9 @@ stringBuilder.append(" where ");
 stringBuilder.append(columnName);
 stringBuilder.append("=");
 stringBuilder.append(StringUtility.stringFormOfValue(value,dataType));
-return stringBuilder.toString();
+sql=stringBuilder.toString();
+stringBuilder=null;
+return sql;
 }
 
 }// class braces close

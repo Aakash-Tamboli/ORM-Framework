@@ -2,6 +2,8 @@ package com.thinking.machines.orm.util.sql;
 import com.thinking.machines.orm.util.sql.statement.*;
 import com.thinking.machines.orm.util.column.*;
 import com.thinking.machines.orm.exception.*;
+import com.thinking.machines.orm.pojo.*;
+
 import java.sql.*;
 import java.util.*;
 
@@ -19,7 +21,7 @@ boolean isExists=false;
 try
 {
 statement=connection.createStatement();
-sqlStatement=PrepareSQLStatement.forForiegnKeyExists(tableName,columnName,value,dataType);
+sqlStatement=PrepareSQLStatement.toCheck(tableName,columnName,value,dataType);
 System.out.println("SQL Query will be fired: "+sqlStatement);
 resultSet=statement.executeQuery(sqlStatement);
 if(resultSet.next()) isExists=true;
@@ -43,7 +45,7 @@ return isExists;
 }
 
 // later on int will change into support of loose coupling
-public static int insert(Connection connection,String tableName,List<ColumnDataWithAdditionalInformation> columnsDataWithAdditionalInformation,boolean isAutoIncremented) throws DataException
+public static int insert(Connection connection,String tableName,List<ColumnData> columnsData,boolean isAutoIncremented) throws DataException
 {
 Statement statement=null;
 String sqlStatement=null;
@@ -53,7 +55,7 @@ try
 {
 statement=connection.createStatement();
 System.out.println("list of Object is going to generate sql");
-sqlStatement=PrepareSQLStatement.forAdd(tableName,columnsDataWithAdditionalInformation);
+sqlStatement=PrepareSQLStatement.forInsert(tableName,columnsData);
 System.out.println("Query will fired: "+sqlStatement);
 
 // temporary code

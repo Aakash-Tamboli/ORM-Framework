@@ -15,5 +15,6 @@ public static final String IS_AUTOINCREMENT="IS_AUTOINCREMENT";
 public static final String FKCOLUMN_NAME="FKCOLUMN_NAME";
 public static final String PKTABLE_NAME="PKTABLE_NAME";
 public static final String PKCOLUMN_NAME="PKCOLUMN_NAME";
+public static final String IS_NULLABLE="IS_NULLABLE";
 }
 

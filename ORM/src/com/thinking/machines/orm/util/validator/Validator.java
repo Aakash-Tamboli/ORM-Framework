@@ -14,7 +14,8 @@ object instanceof Float ||
 object instanceof Character ||
 object instanceof Boolean ||
 object instanceof String ||
-object instanceof java.sql.Date
+object instanceof java.sql.Date ||
+object == null // It makes sense when user doesn't set any value against column and column also take null values
 )
 {
 return true;
